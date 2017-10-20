@@ -25,7 +25,7 @@ public:
 	public:
 		StepControl(uint8_t stepPort, uint8_t stepPin, uint8_t MRT_channel, Stepper* stepper);
 		void setInterval(uint32_t rate);
-		void start();
+		void start(portBASE_TYPE* pxHigherPriorityWoken);
 		void stop();
 		void pulse();
 		void setStepsToRun(uint32_t steps);
@@ -90,6 +90,7 @@ private:
 	/* false: going forward, true going forward */
 	bool direction;
 	static EventGroupHandle_t done;
+	SemaphoreHandle_t _doneInternal;
 	QueueHandle_t actionQueue;
 };
 

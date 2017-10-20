@@ -45,6 +45,7 @@ Stepper::Stepper(uint8_t stepPort, uint8_t stepPin,
 	stepperByChannel[MRT_channel] = this;
 	actionQueue = xQueueCreate(4, sizeof(action));
 
+	_doneInternal = xSemaphoreCreateBinary();
 	// set maxSteps to something ridicilously big to allow calibration to touch the limit switches
 	maxSteps = 1000000;
 }
@@ -169,13 +170,14 @@ void Stepper::StepControl::setInterval(uint32_t rate){
 		currentInterval = 0;
 }
 
-void Stepper::StepControl::start(){
+void Stepper::StepControl::start(portBASE_TYPE* pxHigherPriorityWoken){
 	stepCtrlMRT_CH->INTVAL = currentInterval;
-
 	if( currentInterval == 0 ){
-		xEventGroupSetBits(done, (1 << (_stepper->channel+2)));
-		stop();
-		return;
+		if(pxHigherPriorityWoken != nullptr)
+			xSemaphoreGiveFromISR(_stepper->_doneInternal, pxHigherPriorityWoken);
+		else xSemaphoreGive(_stepper->_doneInternal);
+			stop();
+			return;
 	}
 	stepCtrlMRT_CH->CTRL |= 1; // Enable interrupt
 }
@@ -193,6 +195,9 @@ void Stepper::StepControl::setStepsToRun(uint32_t steps) {
 }
 
 void Stepper::StepControl::MRT_callback(portBASE_TYPE* pxHigherPriorityWoken){
+	if(stepsToRun == 0 && currentInterval == 0){
+		ITM_write("Wat\r\n");
+	}
 	if(stepsToRun != 0){
 		bool limit = !_stepper->direction ? _stepper->limitBack.isEventBitSet() : _stepper->limitFront.isEventBitSet();
 		bool maxed = !_stepper->direction ? _stepper->currentSteps == _stepper->maxSteps : _stepper->currentSteps == 0;
@@ -200,17 +205,22 @@ void Stepper::StepControl::MRT_callback(portBASE_TYPE* pxHigherPriorityWoken){
 		if(!(limit || _stepper->stop || maxed))
 		{
 			pulse();
-			start();
+			start(pxHigherPriorityWoken);
 			--stepsToRun;
 		} else {
-			ITM_write("Staahp");
+			ITM_write("Staahp\r\n");
 			stop();
 			_stepper->stop = true;
-			xEventGroupSetBitsFromISR(done, (1 << (_stepper->channel+2)), pxHigherPriorityWoken);
+			xSemaphoreGiveFromISR(_stepper->_doneInternal, pxHigherPriorityWoken);
+			//xEventGroupSetBitsFromISR(done, (1 << (_stepper->channel+2)), pxHigherPriorityWoken);
 		}
 	} else {
+		char dbg[2] = {_stepper->channel + 'x', '\0'};
 		stop();
-		xEventGroupSetBitsFromISR(done, (1 << (_stepper->channel+2)), pxHigherPriorityWoken);
+		xSemaphoreGiveFromISR(_stepper->_doneInternal, pxHigherPriorityWoken);
+		//xEventGroupSetBitsFromISR(done, (1 << (_stepper->channel+2)), pxHigherPriorityWoken);
+		ITM_write(dbg);
+		ITM_write("Done\r\n");
 	}
 	_stepper->currentSteps = !_stepper->direction ? _stepper->currentSteps+1 : _stepper->currentSteps-1;
 }
@@ -252,15 +262,22 @@ void Stepper::_runForSteps(uint32_t steps) {
 		accelMRT_CH->INTVAL = Chip_Clock_GetSystemClockRate() / (1000/ACCELERATION_STEP_TIME_MS);
 		accelMRT_CH->CTRL |= 1;
 		stepControl.setStepsToRun(steps);
-		stepControl.start();
-
-		xEventGroupWaitBits(done, (1 << (channel+2)), pdTRUE, pdTRUE, portMAX_DELAY);
+		stepControl.start(nullptr);
+		char dbg[2] = {channel + 'x', '\0'};
+		xSemaphoreTake(_doneInternal, portMAX_DELAY);
+		//xEventGroupWaitBits(done, (1 << (channel+2)), pdTRUE, pdTRUE, portMAX_DELAY);
+		ITM_write(dbg);
+		ITM_write("Bitit löyty\r\n");
 	}
 }
 
 uint32_t Stepper::getSpeedForShorterAxle(uint32_t stepsShort,
 		uint32_t stepsLong, uint32_t speedLong) {
-	return (stepsShort*speedLong)/stepsLong;
+	uint32_t speed = (stepsShort*speedLong)/stepsLong;
+	if(speed == 0 && stepsShort != 0) {
+		ITM_write("OMG\r\n");
+	}
+	return speed;
 }
 
 void Stepper::_calibrate(uint32_t nothing) {

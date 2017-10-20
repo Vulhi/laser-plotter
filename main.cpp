@@ -118,10 +118,6 @@ void StepperTest(void* pStepper){
 	pen.initCounterL(50, 5, true, 12);
 	pen.setOutputL(0, 10, 0, true);
 	pen.startCounterL();
-//
-//	stepperY.calibrate();
-//	stepperX.calibrate();
-//	Stepper::waitForAllSteppers();
 
 	pen.setDutycycleL(5);
 	stepperY.setRate(4000, true);
@@ -161,9 +157,10 @@ void StepperTest(void* pStepper){
 			}
 			stepperX.runForSteps(stepsX);
 			stepperY.runForSteps(stepsY);
+			ITM_write("Waiting for steppers");
 			Stepper::waitForAllSteppers();
 			sendOK();
-			ITM_write("OK");
+			ITM_write("OK\r\n");
 			break;
 		}
 		case CODES::G28:
