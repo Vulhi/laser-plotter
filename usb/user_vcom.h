@@ -5,8 +5,8 @@
  *      Author: krl
  */
 
-#ifndef USER_VCOM_H_
-#define USER_VCOM_H_
+#ifndef USB_USER_VCOM_H_
+#define USB_USER_VCOM_H_
 
 /* remove comment on the following line to make CDC task to poll without yielding/blocking */
 #define POLLING_CDC
@@ -42,4 +42,4 @@ uint32_t USB_receive(uint8_t *data, uint32_t length);
 #endif
 
 
-#endif /* USER_VCOM_H_ */
+#endif /* USB_USER_VCOM_H_ */

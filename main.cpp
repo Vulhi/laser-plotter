@@ -20,9 +20,9 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
-#include "user_vcom.h"
+#include "usb/user_vcom.h"
 #include "Controller.h"
-#include "RunningTime.h"
+#include "debugTools/RunningTime.h"
 
 //#define JUST_TESTING
 

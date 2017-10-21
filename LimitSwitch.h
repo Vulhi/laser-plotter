@@ -12,7 +12,8 @@
 #include "FreeRTOS/FreeRTOS.h"
 #include "Stepper.h"
 #include "event_groups.h"
-#include "ITM_write.h"
+
+#include "debugTools/ITM_write.h"
 
 /* Anything non-templated should be here */
 class LimitSwitch_Base {

@@ -11,9 +11,9 @@
 #define DEBUG_TOOLS
 
 #ifdef DEBUG_TOOLS
-#include "ITM_write.h"
-#include "RunningTime.h"
-#include "itoa.h"
+#include "debugTools/ITM_write.h"
+#include "debugTools/RunningTime.h"
+#include "debugTools/itoa.h"
 #endif
 
 //const uint32_t Stepper::ACCELERATION_STEP_SIZE = 8;

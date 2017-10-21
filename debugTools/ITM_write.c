@@ -5,9 +5,10 @@
  *      Author: krl
  */
 
+#include "ITM_write.h"
+
 #include <stdint.h>
 #include <chip.h>
-#include "ITM_write.h"
 // ******************************************************************
 // Cortex-M SWO Trace / Debug registers used for accessing ITM
 // ******************************************************************

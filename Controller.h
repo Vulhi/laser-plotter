@@ -9,11 +9,11 @@
 #define CONTROLLER_H_
 
 #include "aTask.h"
+#include "debugTools/ITM_write.h"
 #include "LimitSwitch.h"
 #include "Stepper.h"
 #include "PWMController.h"
 #include "Parser.h"
-#include "ITM_write.h"
 
 class Controller : public Task {
 public:

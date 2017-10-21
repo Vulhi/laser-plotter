@@ -5,8 +5,8 @@
  *      Author: Ville
  */
 
-#ifndef RUNNINGTIME_H_
-#define RUNNINGTIME_H_
+#ifndef DEBUGTOOLS_RUNNINGTIME_H_
+#define DEBUGTOOLS_RUNNINGTIME_H_
 #include <cstdint>
 
 class RunningTime {
@@ -17,4 +17,4 @@ public:
 	static uint32_t getTime();
 };
 
-#endif /* RUNNINGTIME_H_ */
+#endif /* DEBUGTOOLS_RUNNINGTIME_H_ */

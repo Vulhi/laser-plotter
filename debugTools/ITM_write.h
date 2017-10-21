@@ -5,8 +5,8 @@
  *      Author: krl
  */
 
-#ifndef ITM_WRITE_H_
-#define ITM_WRITE_H_
+#ifndef DEBUGTOOLS_ITM_WRITE_H_
+#define DEBUGTOOLS_ITM_WRITE_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,4 +19,4 @@ int ITM_write(const char *pcBuffer);
 }
 #endif
 
-#endif /* ITM_WRITE_H_ */
+#endif /* DEBUGTOOLS_ITM_WRITE_H_ */

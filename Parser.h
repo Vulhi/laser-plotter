@@ -9,10 +9,10 @@
 #define PARSER_H_
 
 #include "FreeRTOS.h"
-#include "user_vcom.h"
 #include <cstring>
 #include <cstdint>
 #include "queue.h"
+#include "usb/user_vcom.h"
 
 enum class CODES {
 	G28, M1, M4, M10, G1, E

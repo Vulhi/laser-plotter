@@ -1,5 +1,5 @@
-#ifndef ITOA_H_
-#define ITOA_H_
+#ifndef DEBUGTOOLS_ITOA_H_
+#define DEBUGTOOLS_ITOA_H_
 
 /**
  * C++ version 0.4 char* style "itoa":
@@ -33,4 +33,4 @@ char* itoa(int value, char* result, int base) {
 
 
 
-#endif /* ITOA_H_ */
+#endif /* DEBUGTOOLS_ITOA_H_ */

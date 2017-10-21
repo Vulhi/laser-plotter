@@ -6,7 +6,8 @@
  */
 
 #include "Parser.h"
-#include "ITM_write.h"
+
+#include "debugTools/ITM_write.h"
 
 Command Parser::getCommand() {
 	uint32_t len = USB_receive(reinterpret_cast<uint8_t*>(recvBuffer), RCV_BUFSIZE);
