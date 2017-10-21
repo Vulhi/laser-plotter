@@ -33,6 +33,8 @@
 
 #include "Parser.h"
 
+//#define JUST_TESTING
+
 /* Sets up system hardware */
 static void prvSetupHardware(void)
 {
@@ -181,9 +183,11 @@ void StepperTest(void* pStepper){
 			sendOK();
 			break;
 		case CODES::M10:
+#ifndef JUST_TESTING
 			stepperX.calibrate();
 			stepperY.calibrate();
 			Stepper::waitForAllSteppers();
+#endif
 			sendOK();
 			break;
 		case CODES::E:
@@ -198,6 +202,7 @@ int main(void)
 	RunningTime::setup();
 
 	NVIC_EnableIRQ(MRT_IRQn);
+	NVIC_SetPriority(MRT_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY+1);
 
 	xTaskCreate(StepperTest, "stepperTest", configMINIMAL_STACK_SIZE*14, nullptr, (tskIDLE_PRIORITY + 2UL), nullptr);
 	xTaskCreate(cdc_task, "CDC", configMINIMAL_STACK_SIZE*4, nullptr, (tskIDLE_PRIORITY + 1UL), nullptr);

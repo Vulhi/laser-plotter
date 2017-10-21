@@ -45,6 +45,9 @@ InterruptedInputPin::InterruptedInputPin(int port_, int pin_, bool pullup, bool 
 		Chip_PININT_SetPinModeEdge(LPC_GPIO_PIN_INT, PININTCH(risingEdgeInterruptChannel));
 		Chip_PININT_EnableIntHigh(LPC_GPIO_PIN_INT, PININTCH(risingEdgeInterruptChannel));
 		NVIC_ClearPendingIRQ(IRQnumber);
+#ifdef FREERTOS
+		NVIC_SetPriority(IRQnumber, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
+#endif
 		NVIC_EnableIRQ(IRQnumber);
 	}
 	if(fallingEdgeInterrupt){
@@ -54,6 +57,9 @@ InterruptedInputPin::InterruptedInputPin(int port_, int pin_, bool pullup, bool 
 		Chip_PININT_SetPinModeEdge(LPC_GPIO_PIN_INT, PININTCH(fallingEdgeInterruptChannel));
 		Chip_PININT_EnableIntLow(LPC_GPIO_PIN_INT, PININTCH(fallingEdgeInterruptChannel));
 		NVIC_ClearPendingIRQ(IRQnumber);
+#ifdef FREERTOS
+		NVIC_SetPriority(IRQnumber, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
+#endif
 		NVIC_EnableIRQ(IRQnumber);
 	}
 }

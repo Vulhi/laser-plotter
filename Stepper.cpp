@@ -176,8 +176,8 @@ void Stepper::StepControl::start(portBASE_TYPE* pxHigherPriorityWoken){
 		if(pxHigherPriorityWoken != nullptr)
 			xSemaphoreGiveFromISR(_stepper->_doneInternal, pxHigherPriorityWoken);
 		else xSemaphoreGive(_stepper->_doneInternal);
-			stop();
-			return;
+		stop();
+		return;
 	}
 	stepCtrlMRT_CH->CTRL |= 1; // Enable interrupt
 }
@@ -210,7 +210,8 @@ void Stepper::StepControl::MRT_callback(portBASE_TYPE* pxHigherPriorityWoken){
 		} else {
 			ITM_write("Staahp\r\n");
 			stop();
-			_stepper->stop = true;
+			if(!maxed) // Just clip the picture, don't stop motor from moving to another direction;
+				_stepper->stop = true;
 			xSemaphoreGiveFromISR(_stepper->_doneInternal, pxHigherPriorityWoken);
 			//xEventGroupSetBitsFromISR(done, (1 << (_stepper->channel+2)), pxHigherPriorityWoken);
 		}
