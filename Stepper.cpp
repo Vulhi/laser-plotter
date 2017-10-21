@@ -16,9 +16,9 @@
 #include "itoa.h"
 #endif
 
-const uint32_t Stepper::ACCELERATION_STEP_SIZE = 8;
+//const uint32_t Stepper::ACCELERATION_STEP_SIZE = 8;
 const double Stepper::ACCELERATION_STEP_TIME_MS = 1.0;
-const uint32_t Stepper::ACCELERATION = (ACCELERATION_STEP_SIZE*1000 / ACCELERATION_STEP_TIME_MS);
+//const uint32_t Stepper::ACCELERATION = (ACCELERATION_STEP_SIZE*1000 / ACCELERATION_STEP_TIME_MS);
 
 EventGroupHandle_t Stepper::done = xEventGroupCreate();
 Stepper* Stepper::stepperByChannel[2];
@@ -29,13 +29,12 @@ Stepper* Stepper::stepperByChannel[2];
  * */
 Stepper::Stepper(uint8_t stepPort, uint8_t stepPin,
 		uint8_t dirPort, uint8_t dirPin,
-		uint8_t MRT_channel,
-		const LimitSwitch_Base& front, const LimitSwitch_Base& back) :
+		uint8_t MRT_channel) :
   Task("Stepper", configMINIMAL_STACK_SIZE*4, (tskIDLE_PRIORITY + 3UL)),
   accelMRT_CH(LPC_MRT_CH(MRT_channel+2)),
   dirControl(dirPort, dirPin, DigitalIoPin::output, false),
-  stepControl(stepPort, stepPin, MRT_channel, this),
-  limitFront(front), limitBack(back){
+  stepControl(stepPort, stepPin, MRT_channel, this)
+{
 	direction = false;
 	stop = false;
 	currentSteps = 100000; // Something big to allow calibration to not underflow when reversing.
@@ -99,9 +98,9 @@ void Stepper::waitForAllSteppers() {
 
 void Stepper::_accelerate(){
 	if(currentRate < targetRate){
-		currentRate += ACCELERATION_STEP_SIZE;
+		currentRate += _accelerationMilliStepSize/1000;
 	} else if(targetRate < currentRate){
-		currentRate -= ACCELERATION_STEP_SIZE;
+		currentRate -= _accelerationMilliStepSize/1000;
 	} else {
 		accelMRT_CH->INTVAL = 0 | (1 << 31);
 		accelMRT_CH->CTRL &= ~1;
@@ -127,15 +126,15 @@ void Stepper::runForSteps(uint32_t steps){
 
 uint32_t Stepper::getStepsRequiredToAccelerate() const {
 	uint32_t result = currentRate < targetRate ?
-			(targetRate*targetRate - currentRate*currentRate) / (ACCELERATION*2) + 0.5: // +0.5 is for rounding
-			(currentRate*currentRate - targetRate*targetRate) / (ACCELERATION*2) + 0.5;
+			(targetRate*targetRate - currentRate*currentRate) / (getAcceleration()*2) + 0.5: // +0.5 is for rounding
+			(currentRate*currentRate - targetRate*targetRate) / (getAcceleration()*2) + 0.5;
 	return result;
 }
 
 uint32_t Stepper::getRateAchievable(uint32_t steps, bool max) {
 	uint32_t result = max ?
-			sqrt(2*ACCELERATION*steps - currentRate*currentRate) + 0.5:
-			sqrt(-2*ACCELERATION*steps + currentRate*currentRate) + 0.5;
+			sqrt(2*getAcceleration()*steps - currentRate*currentRate) + 0.5:
+			sqrt(-2*getAcceleration()*steps + currentRate*currentRate) + 0.5;
 	return result;
 }
 
@@ -199,10 +198,9 @@ void Stepper::StepControl::MRT_callback(portBASE_TYPE* pxHigherPriorityWoken){
 		ITM_write("Wat\r\n");
 	}
 	if(stepsToRun != 0){
-		bool limit = !_stepper->direction ? _stepper->limitBack.isEventBitSet() : _stepper->limitFront.isEventBitSet();
 		bool maxed = !_stepper->direction ? _stepper->currentSteps == _stepper->maxSteps : _stepper->currentSteps == 0;
 
-		if(!(limit || _stepper->stop || maxed))
+		if(!(_stepper->stop || maxed))
 		{
 			pulse();
 			start(pxHigherPriorityWoken);
@@ -213,13 +211,11 @@ void Stepper::StepControl::MRT_callback(portBASE_TYPE* pxHigherPriorityWoken){
 			if(!maxed) // Just clip the picture, don't stop motor from moving to another direction;
 				_stepper->stop = true;
 			xSemaphoreGiveFromISR(_stepper->_doneInternal, pxHigherPriorityWoken);
-			//xEventGroupSetBitsFromISR(done, (1 << (_stepper->channel+2)), pxHigherPriorityWoken);
 		}
 	} else {
 		char dbg[2] = {_stepper->channel + 'x', '\0'};
 		stop();
 		xSemaphoreGiveFromISR(_stepper->_doneInternal, pxHigherPriorityWoken);
-		//xEventGroupSetBitsFromISR(done, (1 << (_stepper->channel+2)), pxHigherPriorityWoken);
 		ITM_write(dbg);
 		ITM_write("Done\r\n");
 	}
@@ -227,7 +223,6 @@ void Stepper::StepControl::MRT_callback(portBASE_TYPE* pxHigherPriorityWoken){
 }
 
 extern "C" void MRT_IRQHandler(void) {
-	static bool toggle = false;
 	portBASE_TYPE pxHigherPriorityTaskWoken = pdFALSE;
 	uint32_t interruptPending = Chip_MRT_GetIntPending();
 	Chip_MRT_ClearIntPending(interruptPending);
@@ -279,6 +274,20 @@ uint32_t Stepper::getSpeedForShorterAxle(uint32_t stepsShort,
 		ITM_write("OMG\r\n");
 	}
 	return speed;
+}
+
+uint32_t Stepper::getAcceleration() const {
+	return (_accelerationMilliStepSize / ACCELERATION_STEP_TIME_MS);
+}
+
+void Stepper::setAccelerationStepSize(uint32_t milliSteps){
+	_accelerationMilliStepSize = milliSteps;
+}
+
+uint32_t Stepper::calculateRequiredAccelerationStepSize(uint32_t initialSpeed,
+		uint32_t finalSpeed, uint32_t steps) {
+	return (finalSpeed*finalSpeed - initialSpeed*initialSpeed) /
+			(2*steps);
 }
 
 void Stepper::_calibrate(uint32_t nothing) {

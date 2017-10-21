@@ -15,7 +15,6 @@
 #include "aTask.h"
 
 #include "DigitalIoPin.h"
-#include "LimitSwitch.h"
 #include <cmath>
 
 /* StepControl is the actual control of steps and Stepper does acceleration and provides the API for controlling */
@@ -38,14 +37,14 @@ public:
 		DigitalIoPin pin;
 		bool _pulse;
 	};
-	const static uint32_t ACCELERATION_STEP_SIZE;
 	const static double ACCELERATION_STEP_TIME_MS;
-	const static uint32_t ACCELERATION;
+	uint32_t getAcceleration() const;
+	void setAccelerationStepSize(uint32_t milliSteps);
+	uint32_t calculateRequiredAccelerationStepSize(uint32_t initialSpeed, uint32_t finalSpeed, uint32_t steps);
 
 	Stepper(uint8_t stepPort, uint8_t stepPin,
 			uint8_t dirPort, uint8_t dirPin,
-			uint8_t MRT_channel,
-			const LimitSwitch_Base& front, const LimitSwitch_Base& back);
+			uint8_t MRT_channel);
 	void calibrate();
 	void toggleDirection();
 	void goHome();
@@ -80,12 +79,11 @@ private:
 	uint32_t targetRate;
 	DigitalIoPin dirControl;
 	StepControl stepControl;
-	const LimitSwitch_Base& limitFront;
-	const LimitSwitch_Base& limitBack;
 	uint32_t currentSteps;
 	uint32_t maxSteps;
 	uint8_t channel;
 	bool stop;
+	uint32_t _accelerationMilliStepSize;
 
 	/* false: going forward, true going forward */
 	bool direction;

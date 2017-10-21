@@ -10,15 +10,14 @@
 
 #include "InterruptedInputPin.h"
 #include "FreeRTOS/FreeRTOS.h"
-#include "aTask.h"
-#include "semphr.h"
+#include "Stepper.h"
 #include "event_groups.h"
 #include "ITM_write.h"
 
 /* Anything non-templated should be here */
 class LimitSwitch_Base {
 public:
-	LimitSwitch_Base(int port, int pin, int channel);
+	LimitSwitch_Base(int port, int pin, int channel, Stepper& stepper, bool max);
 	inline static EventGroupHandle_t getEventGroup(){
 		return eventGroup;
 	}
@@ -32,13 +31,15 @@ protected:
 	static EventGroupHandle_t eventGroup;
 	InterruptedInputPin pinControl;
 	int _channel;
+	Stepper& stepper;
+	bool max;
 };
 
 /* Only one limit switch per channel */
 template <int channel>
 class LimitSwitch : public LimitSwitch_Base {
 public:
-	LimitSwitch(int port, int pin);
+	LimitSwitch(int port, int pin, Stepper& stepper, bool max);
 private:
 	/* Each LimitSwitch will have its own channel so we can declare everything here static */
 	inline static LimitSwitch* getLimitSwitch(){
