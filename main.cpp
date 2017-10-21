@@ -62,7 +62,7 @@ void vConfigureTimerForRunTimeStats( void ) {
 int main(void)
 {
 	prvSetupHardware();
-	Controller* controller = new Controller();
+	new Controller();
 	xTaskCreate(cdc_task, "CDC", configMINIMAL_STACK_SIZE*4, nullptr, (tskIDLE_PRIORITY + 1UL), nullptr);
 
 	vTaskStartScheduler();

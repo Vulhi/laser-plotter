@@ -43,6 +43,7 @@ Stepper::Stepper(uint8_t stepPort, uint8_t stepPin,
 	channel = MRT_channel;
 	stepperByChannel[MRT_channel] = this;
 	actionQueue = xQueueCreate(4, sizeof(action));
+	_accelerationMilliStepSize = 8000;
 
 	_doneInternal = xSemaphoreCreateBinary();
 	// set maxSteps to something ridicilously big to allow calibration to touch the limit switches
