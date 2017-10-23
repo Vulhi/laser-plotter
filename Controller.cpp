@@ -56,10 +56,10 @@ void Controller::_task(){
 			yStepper.setDirection(directionY);
 			if(stepsX > stepsY){
 				xStepper.setRate(3000, true);
-				yStepper.setRate(Stepper::getSpeedForShorterAxle(stepsY, stepsX, xStepper.getCurrentRate()));
+				yStepper.setRate(Stepper::getRateForShorterAxle(stepsY, stepsX, xStepper.getCurrentRate()), true);
 			} else {
 				yStepper.setRate(3000, true);
-				xStepper.setRate(Stepper::getSpeedForShorterAxle(stepsX, stepsY, yStepper.getCurrentRate()));
+				xStepper.setRate(Stepper::getRateForShorterAxle(stepsX, stepsY, yStepper.getCurrentRate()), true);
 			}
 			xStepper.runForSteps(stepsX);
 			yStepper.runForSteps(stepsY);

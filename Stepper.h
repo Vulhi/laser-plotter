@@ -59,7 +59,7 @@ public:
 	uint32_t getSteps() const;
 	uint32_t getStepsRequiredToAccelerate() const;
 	uint32_t getRateAchievable(uint32_t steps, bool max = true);
-	static uint32_t getSpeedForShorterAxle(uint32_t stepsShort, uint32_t stepsLong, uint32_t speedLong);
+	static uint32_t getRateForShorterAxle(uint32_t stepsShort, uint32_t stepsLong, uint32_t rateLong);
 	void MRT_callback(portBASE_TYPE* pxHigherPriorityWoken);
 	static Stepper* getStepperByChannel(uint8_t channel);
 	static void waitForAllSteppers();
@@ -87,7 +87,7 @@ private:
 
 	/* false: going forward, true going forward */
 	bool direction;
-	static EventGroupHandle_t done;
+	static EventGroupHandle_t eventGroup;
 	SemaphoreHandle_t _doneInternal;
 	QueueHandle_t actionQueue;
 };

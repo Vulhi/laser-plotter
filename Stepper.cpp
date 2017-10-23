@@ -20,7 +20,7 @@
 const double Stepper::ACCELERATION_STEP_TIME_MS = 1.0;
 //const uint32_t Stepper::ACCELERATION = (ACCELERATION_STEP_SIZE*1000 / ACCELERATION_STEP_TIME_MS);
 
-EventGroupHandle_t Stepper::done = xEventGroupCreate();
+EventGroupHandle_t Stepper::eventGroup = xEventGroupCreate();
 Stepper* Stepper::stepperByChannel[2];
 
 /* Call Chip_MRT_Init() before calling this constructor
@@ -30,7 +30,7 @@ Stepper* Stepper::stepperByChannel[2];
 Stepper::Stepper(uint8_t stepPort, uint8_t stepPin,
 		uint8_t dirPort, uint8_t dirPin,
 		uint8_t MRT_channel) :
-  Task("Stepper", configMINIMAL_STACK_SIZE*4, (tskIDLE_PRIORITY + 3UL)),
+  Task("Stepper", configMINIMAL_STACK_SIZE*4, (tskIDLE_PRIORITY + 2UL)),
   accelMRT_CH(LPC_MRT_CH(MRT_channel+2)),
   dirControl(dirPort, dirPin, DigitalIoPin::output, false),
   stepControl(stepPort, stepPin, MRT_channel, this)
@@ -61,8 +61,6 @@ bool Stepper::getDirection() const {
 
 void Stepper::setStop(bool stop){
 	this->stop = stop;
-	accelMRT_CH->INTVAL = 0;
-	accelMRT_CH->CTRL &= ~1;
 }
 
 void Stepper::setRate(uint32_t rate, bool instant) {
@@ -94,14 +92,16 @@ void Stepper::calibrate() {
 }
 
 void Stepper::waitForAllSteppers() {
-	xEventGroupWaitBits(done, 3, pdTRUE, pdTRUE, portMAX_DELAY);
+	xEventGroupWaitBits(eventGroup, 3, pdTRUE, pdTRUE, portMAX_DELAY);
 }
 
 void Stepper::_accelerate(){
 	if(currentRate < targetRate){
 		currentRate += _accelerationMilliStepSize/1000;
+		ITM_write("Accel+\r\n");
 	} else if(targetRate < currentRate){
 		currentRate -= _accelerationMilliStepSize/1000;
+		ITM_write("Accel-\r\n");
 	} else {
 		accelMRT_CH->INTVAL = 0 | (1 << 31);
 		accelMRT_CH->CTRL &= ~1;
@@ -148,7 +148,7 @@ void Stepper::_task() {
 		action a;
 		xQueueReceive(actionQueue, &a, portMAX_DELAY);
 		(this->*(a.f))(a.param);
-		xEventGroupSetBits(done, (1 << channel));
+		xEventGroupSetBits(eventGroup, (1 << channel));
 	}
 }
 
@@ -165,7 +165,7 @@ void Stepper::StepControl::pulse(){
 
 void Stepper::StepControl::setInterval(uint32_t rate){
 	if(rate > 0)
-		currentInterval = Chip_Clock_GetSystemClockRate() / rate / 2; // Two interrupts = one step
+		currentInterval = Chip_Clock_GetSystemClockRate() / (rate * 2); // Two interrupts = one step
 	else
 		currentInterval = 0;
 }
@@ -195,9 +195,6 @@ void Stepper::StepControl::setStepsToRun(uint32_t steps) {
 }
 
 void Stepper::StepControl::MRT_callback(portBASE_TYPE* pxHigherPriorityWoken){
-	if(stepsToRun == 0 && currentInterval == 0){
-		ITM_write("Wat\r\n");
-	}
 	if(stepsToRun != 0){
 		bool maxed = !_stepper->direction ? _stepper->currentSteps == _stepper->maxSteps : _stepper->currentSteps == 0;
 
@@ -207,18 +204,14 @@ void Stepper::StepControl::MRT_callback(portBASE_TYPE* pxHigherPriorityWoken){
 			start(pxHigherPriorityWoken);
 			--stepsToRun;
 		} else {
-			ITM_write("Staahp\r\n");
 			stop();
-			if(!maxed) // Just clip the picture, don't stop motor from moving to another direction;
+			if(!maxed && _stepper->stop) // Just clip the picture, don't stop motor from moving to another direction;
 				_stepper->stop = true;
 			xSemaphoreGiveFromISR(_stepper->_doneInternal, pxHigherPriorityWoken);
 		}
 	} else {
-		char dbg[2] = {_stepper->channel + 'x', '\0'};
 		stop();
 		xSemaphoreGiveFromISR(_stepper->_doneInternal, pxHigherPriorityWoken);
-		ITM_write(dbg);
-		ITM_write("Done\r\n");
 	}
 	_stepper->currentSteps = !_stepper->direction ? _stepper->currentSteps+1 : _stepper->currentSteps-1;
 }
@@ -255,6 +248,7 @@ void Stepper::goHome() {
 }
 
 void Stepper::_runForSteps(uint32_t steps) {
+//	xEventGroupSync(eventGroup, (1 << channel+2), (1 << 2) | (1 << 3), portMAX_DELAY); // Sync the stepping between motors. Didn't help
 	if(steps > 0){
 		accelMRT_CH->INTVAL = Chip_Clock_GetSystemClockRate() / (1000/ACCELERATION_STEP_TIME_MS);
 		accelMRT_CH->CTRL |= 1;
@@ -262,18 +256,13 @@ void Stepper::_runForSteps(uint32_t steps) {
 		stepControl.start(nullptr);
 		char dbg[2] = {channel + 'x', '\0'};
 		xSemaphoreTake(_doneInternal, portMAX_DELAY);
-		//xEventGroupWaitBits(done, (1 << (channel+2)), pdTRUE, pdTRUE, portMAX_DELAY);
-		ITM_write(dbg);
-		ITM_write("Bitit löyty\r\n");
 	}
 }
 
-uint32_t Stepper::getSpeedForShorterAxle(uint32_t stepsShort,
+uint32_t Stepper::getRateForShorterAxle(uint32_t stepsShort,
 		uint32_t stepsLong, uint32_t speedLong) {
 	uint32_t speed = (stepsShort*speedLong)/stepsLong;
-	if(speed == 0 && stepsShort != 0) {
-		ITM_write("OMG\r\n");
-	}
+
 	return speed;
 }
 

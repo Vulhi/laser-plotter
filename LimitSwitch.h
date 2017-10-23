@@ -19,17 +19,7 @@
 class LimitSwitch_Base {
 public:
 	LimitSwitch_Base(int port, int pin, int channel, Stepper& stepper, bool max);
-	inline static EventGroupHandle_t getEventGroup(){
-		return eventGroup;
-	}
-	inline bool isEventBitSet() const {
-		return (xEventGroupGetBits(eventGroup) >> _channel) & 1;
-	}
 protected:
-	/* Each LimitSwitch will have invidual bit in event group
-	 * indicating if switch is pressed or not (1 or 0)
-	 */
-	static EventGroupHandle_t eventGroup;
 	InterruptedInputPin pinControl;
 	int _channel;
 	Stepper& stepper;

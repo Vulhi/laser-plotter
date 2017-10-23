@@ -7,6 +7,7 @@ template <int channel>
 LimitSwitch<channel>::LimitSwitch(int port, int pin, Stepper& stepper, bool max)
 : LimitSwitch_Base(port, pin, channel, stepper, max) {
 	pinControl.setInterruptHandler(channel, IRQHandler);
+	thisPtr = this;
 }
 
 template <int channel>
@@ -24,9 +25,9 @@ void LimitSwitch<channel>::IRQHandler(portBASE_TYPE* pxHigherPriorityTaskWoken){
 			lastInterruptWasFall = true;
 		} else if (
 			lastInterruptWasFall
-			&& (thisPtr->stepper.getDirection() == thisPtr->max)
+			//&& (thisPtr->stepper.getDirection() == thisPtr->max)
 			) {
-			thisPtr->stepper.setStop(false);
+			//thisPtr->stepper.setStop(false);
 			ITM_write("Bit cleared\r\n");
 			lastInterruptWasFall = false;
 		}
