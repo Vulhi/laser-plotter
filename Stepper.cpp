@@ -275,7 +275,7 @@ void Stepper::setAccelerationStepSize(uint32_t milliSteps){
 }
 
 uint32_t Stepper::getStepsRequiredToAccelerate(
-		uint32_t accelerationMillistepSize, uint32_t fromRate, uint32_t toRate) const {
+		uint32_t accelerationMillistepSize, uint32_t fromRate, uint32_t toRate) {
 	uint32_t result = fromRate < toRate ?
 			(toRate*toRate - fromRate*fromRate) / ((accelerationMillistepSize/ACCELERATION_STEP_TIME_MS)*2) + 0.5: // +0.5 is for rounding
 			(fromRate*fromRate - toRate*toRate) / ((accelerationMillistepSize/ACCELERATION_STEP_TIME_MS)*2) + 0.5;

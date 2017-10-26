@@ -18,6 +18,10 @@
 class Controller : public Task {
 public:
 	Controller();
+	const static uint32_t LONG_AXLE_MIN_RATE;
+	const static uint32_t MAX_RATE;
+	const static uint32_t LONG_AXLE_ACCELERATION_MILLISTEPS;
+	const static uint32_t MIN_STEPS_FROM_MAX_TO_MIN_RATE;
 private:
 	Stepper xStepper;
 	Stepper yStepper;
@@ -28,10 +32,6 @@ private:
 	PWMController pen;
 	PWMController laser;
 	Parser parser;
-
-	const static uint32_t LONG_AXLE_MIN_RATE;
-	const static uint32_t MAX_RATE;
-	const static uint32_t LONG_AXLE_ACCELERATION_MILLISTEPS;
 
 	void _task() override;
 	void sendOK();

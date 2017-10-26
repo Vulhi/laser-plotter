@@ -13,6 +13,11 @@ const uint32_t Controller::LONG_AXLE_MIN_RATE = 2000;
 const uint32_t Controller::MAX_RATE = 5000;
 const uint32_t Controller::LONG_AXLE_ACCELERATION_MILLISTEPS = 8000;
 
+const uint32_t Controller::MIN_STEPS_FROM_MAX_TO_MIN_RATE = Stepper::getStepsRequiredToAccelerate(
+		Controller::LONG_AXLE_ACCELERATION_MILLISTEPS,
+		Controller::MAX_RATE,
+		Controller::LONG_AXLE_MIN_RATE);
+
 Controller::Controller() :
 Task("Controller", configMINIMAL_STACK_SIZE*14, (tskIDLE_PRIORITY + 2UL)),
 xStepper(0, 27, 0, 28, 0),
@@ -46,6 +51,14 @@ void Controller::_task(){
 			bool directionY = true;
 			uint32_t stepsX;
 			uint32_t stepsY;
+
+			uint32_t stepsX_start;
+			uint32_t stepsX_end;
+			uint32_t stepsY_start;
+			uint32_t stepsY_end;
+
+			bool maxSpeed = false;
+
 			if(currentPosX < targetPosX){
 				stepsX = targetPosX-currentPosX;
 				directionX = false;
@@ -75,20 +88,47 @@ void Controller::_task(){
 				xStepper.setAccelerationStepSize(LONG_AXLE_ACCELERATION_MILLISTEPS);
 				yStepper.setAccelerationStepSize(Stepper::getAccelerationForShorterAxle(stepsY, stepsX, LONG_AXLE_ACCELERATION_MILLISTEPS));
 				// Set target speed
-				xStepper.setRate(MAX_RATE);
-				yStepper.setRate(MAX_RATE);
+				if(MIN_STEPS_FROM_MAX_TO_MIN_RATE*2 <= stepsX){
+					xStepper.setRate(MAX_RATE);
+					yStepper.setRate(Stepper::getRateForShorterAxle(stepsY, stepsX, MAX_RATE));
+					maxSpeed = true;
+				}
 			} else {
 				yStepper.setRate(LONG_AXLE_MIN_RATE, true);
 				xStepper.setRate(Stepper::getRateForShorterAxle(stepsX, stepsY, yStepper.getCurrentRate()), true);
-				xStepper.setAccelerationStepSize(Stepper::getAccelerationForShorterAxle(stepsY, stepsX, LONG_AXLE_ACCELERATION_MILLISTEPS));
+				yStepper.setAccelerationStepSize(LONG_AXLE_ACCELERATION_MILLISTEPS);
+				xStepper.setAccelerationStepSize(Stepper::getAccelerationForShorterAxle(stepsX, stepsY, LONG_AXLE_ACCELERATION_MILLISTEPS));
 
+				if(MIN_STEPS_FROM_MAX_TO_MIN_RATE*2 <= stepsY){
+					yStepper.setRate(MAX_RATE);
+					xStepper.setRate(Stepper::getRateForShorterAxle(stepsX, stepsY, MAX_RATE));
+					maxSpeed = true;
+				}
 			}
-			xStepper.runForSteps(stepsX);
-			yStepper.runForSteps(stepsY);
-			ITM_write("Waiting for steppers");
+			if(maxSpeed){
+				if(stepsX > stepsY){
+					stepsX_start = stepsX-MIN_STEPS_FROM_MAX_TO_MIN_RATE;
+					stepsY_start = stepsY-((MIN_STEPS_FROM_MAX_TO_MIN_RATE*stepsY)/stepsX);
+					xStepper.runForSteps(stepsX_start);
+					yStepper.runForSteps(stepsY_start);
+				} else {
+					stepsY_start = stepsX-MIN_STEPS_FROM_MAX_TO_MIN_RATE;
+					stepsX_start = stepsX-((MIN_STEPS_FROM_MAX_TO_MIN_RATE*stepsX)/stepsY);
+					yStepper.runForSteps(stepsY_start);
+					xStepper.runForSteps(stepsX_start);
+				}
+				Stepper::waitForAllSteppers();
+				xStepper.setRate(0);
+				yStepper.setRate(0);
+				xStepper.runForSteps(stepsX-stepsX_start);
+				yStepper.runForSteps(stepsY-stepsY_start);
+			}
+			else {
+				xStepper.runForSteps(stepsX);
+				yStepper.runForSteps(stepsY);
+			}
 			Stepper::waitForAllSteppers();
 			sendOK();
-			ITM_write("OK\r\n");
 			break;
 		}
 		case CODES::G28:
