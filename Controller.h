@@ -29,6 +29,10 @@ private:
 	PWMController laser;
 	Parser parser;
 
+	const static uint32_t LONG_AXLE_MIN_RATE;
+	const static uint32_t MAX_RATE;
+	const static uint32_t LONG_AXLE_ACCELERATION_MILLISTEPS;
+
 	void _task() override;
 	void sendOK();
 };

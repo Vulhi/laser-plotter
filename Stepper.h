@@ -40,7 +40,6 @@ public:
 	const static double ACCELERATION_STEP_TIME_MS;
 	uint32_t getAcceleration() const;
 	void setAccelerationStepSize(uint32_t milliSteps);
-	uint32_t calculateRequiredAccelerationStepSize(uint32_t initialSpeed, uint32_t finalSpeed, uint32_t steps);
 
 	Stepper(uint8_t stepPort, uint8_t stepPin,
 			uint8_t dirPort, uint8_t dirPin,
@@ -58,8 +57,12 @@ public:
 	StepControl* getStepControl();
 	uint32_t getSteps() const;
 	uint32_t getStepsRequiredToAccelerate() const;
+	static uint32_t getStepsRequiredToAccelerate(uint32_t accelerationMillistepSize, uint32_t fromRate, uint32_t toRate) const;
 	uint32_t getRateAchievable(uint32_t steps, bool max = true);
 	static uint32_t getRateForShorterAxle(uint32_t stepsShort, uint32_t stepsLong, uint32_t rateLong);
+	inline static uint32_t getAccelerationForShorterAxle(uint32_t stepsShort, uint32_t stepsLong, uint32_t accelLong) {
+		getRateForShorterAxle(stepsShort, stepsLong, accelLong);
+	}
 	void MRT_callback(portBASE_TYPE* pxHigherPriorityWoken);
 	static Stepper* getStepperByChannel(uint8_t channel);
 	static void waitForAllSteppers();

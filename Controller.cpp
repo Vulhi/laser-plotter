@@ -9,6 +9,10 @@
 
 //#define JUST_TESTING
 
+const uint32_t Controller::LONG_AXLE_MIN_RATE = 2000;
+const uint32_t Controller::MAX_RATE = 5000;
+const uint32_t Controller::LONG_AXLE_ACCELERATION_MILLISTEPS = 8000;
+
 Controller::Controller() :
 Task("Controller", configMINIMAL_STACK_SIZE*14, (tskIDLE_PRIORITY + 2UL)),
 xStepper(0, 27, 0, 28, 0),
@@ -54,12 +58,30 @@ void Controller::_task(){
 
 			xStepper.setDirection(directionX);
 			yStepper.setDirection(directionY);
+#ifdef OLD
 			if(stepsX > stepsY){
 				xStepper.setRate(3000, true);
 				yStepper.setRate(Stepper::getRateForShorterAxle(stepsY, stepsX, xStepper.getCurrentRate()), true);
 			} else {
 				yStepper.setRate(3000, true);
 				xStepper.setRate(Stepper::getRateForShorterAxle(stepsX, stepsY, yStepper.getCurrentRate()), true);
+			}
+#endif
+			if(stepsX > stepsY){
+				// Calculate and set initial speed
+				xStepper.setRate(LONG_AXLE_MIN_RATE, true);
+				yStepper.setRate(Stepper::getRateForShorterAxle(stepsY, stepsX, xStepper.getCurrentRate()), true);
+				// Calculate and set acceleration
+				xStepper.setAccelerationStepSize(LONG_AXLE_ACCELERATION_MILLISTEPS);
+				yStepper.setAccelerationStepSize(Stepper::getAccelerationForShorterAxle(stepsY, stepsX, LONG_AXLE_ACCELERATION_MILLISTEPS));
+				// Set target speed
+				xStepper.setRate(MAX_RATE);
+				yStepper.setRate(MAX_RATE);
+			} else {
+				yStepper.setRate(LONG_AXLE_MIN_RATE, true);
+				xStepper.setRate(Stepper::getRateForShorterAxle(stepsX, stepsY, yStepper.getCurrentRate()), true);
+				xStepper.setAccelerationStepSize(Stepper::getAccelerationForShorterAxle(stepsY, stepsX, LONG_AXLE_ACCELERATION_MILLISTEPS));
+
 			}
 			xStepper.runForSteps(stepsX);
 			yStepper.runForSteps(stepsY);
