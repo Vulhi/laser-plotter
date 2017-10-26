@@ -57,7 +57,7 @@ void Controller::_task(){
 			uint32_t stepsY_start;
 			uint32_t stepsY_end;
 
-			bool maxSpeed = false;
+			bool accy = false;
 
 			if(currentPosX < targetPosX){
 				stepsX = targetPosX-currentPosX;
@@ -71,19 +71,19 @@ void Controller::_task(){
 
 			xStepper.setDirection(directionX);
 			yStepper.setDirection(directionY);
-#ifdef OLD
-			if(stepsX > stepsY){
-				xStepper.setRate(3000, true);
-				yStepper.setRate(Stepper::getRateForShorterAxle(stepsY, stepsX, xStepper.getCurrentRate()), true);
-			} else {
-				yStepper.setRate(3000, true);
-				xStepper.setRate(Stepper::getRateForShorterAxle(stepsX, stepsY, yStepper.getCurrentRate()), true);
-			}
-#endif
-			if(stepsX > stepsY){
+//#ifdef OLD
+//			if(stepsX > stepsY){
+//				xStepper.setRate(3000, true);
+//				yStepper.setRate(Stepper::getRateForShorterAxle(stepsY, stepsX, xStepper.getCurrentRate()), true);
+//			} else {
+//				yStepper.setRate(3000, true);
+//				xStepper.setRate(Stepper::getRateForShorterAxle(stepsX, stepsY, yStepper.getCurrentRate()), true);
+//			}
+//#endif
+			if(stepsX >= stepsY){
 				// Calculate and set initial speed
 				xStepper.setRate(LONG_AXLE_MIN_RATE, true);
-				yStepper.setRate(Stepper::getRateForShorterAxle(stepsY, stepsX, xStepper.getCurrentRate()), true);
+				yStepper.setRate(Stepper::getRateForShorterAxle(stepsY, stepsX, LONG_AXLE_MIN_RATE), true);
 				// Calculate and set acceleration
 				xStepper.setAccelerationStepSize(LONG_AXLE_ACCELERATION_MILLISTEPS);
 				yStepper.setAccelerationStepSize(Stepper::getAccelerationForShorterAxle(stepsY, stepsX, LONG_AXLE_ACCELERATION_MILLISTEPS));
@@ -91,7 +91,7 @@ void Controller::_task(){
 				if(MIN_STEPS_FROM_MAX_TO_MIN_RATE*2 <= stepsX){
 					xStepper.setRate(MAX_RATE);
 					yStepper.setRate(Stepper::getRateForShorterAxle(stepsY, stepsX, MAX_RATE));
-					maxSpeed = true;
+					accy = true;
 				}
 			} else {
 				yStepper.setRate(LONG_AXLE_MIN_RATE, true);
@@ -102,21 +102,22 @@ void Controller::_task(){
 				if(MIN_STEPS_FROM_MAX_TO_MIN_RATE*2 <= stepsY){
 					yStepper.setRate(MAX_RATE);
 					xStepper.setRate(Stepper::getRateForShorterAxle(stepsX, stepsY, MAX_RATE));
-					maxSpeed = true;
+					accy = true;
 				}
 			}
-			if(maxSpeed){
-				if(stepsX > stepsY){
+			if(accy){
+				if(stepsX >= stepsY){
 					stepsX_start = stepsX-MIN_STEPS_FROM_MAX_TO_MIN_RATE;
 					stepsY_start = stepsY-((MIN_STEPS_FROM_MAX_TO_MIN_RATE*stepsY)/stepsX);
 					xStepper.runForSteps(stepsX_start);
 					yStepper.runForSteps(stepsY_start);
 				} else {
-					stepsY_start = stepsX-MIN_STEPS_FROM_MAX_TO_MIN_RATE;
+					stepsY_start = stepsY-MIN_STEPS_FROM_MAX_TO_MIN_RATE;
 					stepsX_start = stepsX-((MIN_STEPS_FROM_MAX_TO_MIN_RATE*stepsX)/stepsY);
 					yStepper.runForSteps(stepsY_start);
 					xStepper.runForSteps(stepsX_start);
 				}
+				vTaskDelay(20*portTICK_PERIOD_MS); // Give some time for FreeRTOS
 				Stepper::waitForAllSteppers();
 				xStepper.setRate(0);
 				yStepper.setRate(0);
