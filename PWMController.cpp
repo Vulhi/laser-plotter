@@ -7,6 +7,7 @@
 
 #include "PWMController.h"
 
+// Call constructors for L and H before calling initCounter{L,H} if used seperately
 PWMController::PWMController(LPC_SCT_T* pSCTimer) {
 	timer = pSCTimer;
 	Chip_SCT_Init(pSCTimer);

@@ -7,7 +7,7 @@
 
 #include "Controller.h"
 
-//#define JUST_TESTING
+#define JUST_TESTING
 
 const uint32_t Controller::LONG_AXLE_MIN_RATE = 2000;
 const uint32_t Controller::MAX_RATE = 5000;
@@ -33,8 +33,9 @@ laser(LPC_SCT0)
 	pen.setOutputL(0, 10, 0, true);
 	pen.startCounterL();
 
-//	TODO: laser init
-
+	laser.initCounterH(10000, 0, true, 1);
+	laser.setOutputH(0, 12, 1, true);
+	laser.startCounterH();
 }
 
 void Controller::_task(){
@@ -53,11 +54,9 @@ void Controller::_task(){
 			uint32_t stepsY;
 
 			uint32_t stepsX_start;
-			uint32_t stepsX_end;
 			uint32_t stepsY_start;
-			uint32_t stepsY_end;
 
-			bool accy = false;
+			bool accelerate = false;
 
 			if(currentPosX < targetPosX){
 				stepsX = targetPosX-currentPosX;
@@ -91,21 +90,23 @@ void Controller::_task(){
 				if(MIN_STEPS_FROM_MAX_TO_MIN_RATE*2 <= stepsX){
 					xStepper.setRate(MAX_RATE);
 					yStepper.setRate(Stepper::getRateForShorterAxle(stepsY, stepsX, MAX_RATE));
-					accy = true;
+					accelerate = true;
 				}
 			} else {
 				yStepper.setRate(LONG_AXLE_MIN_RATE, true);
-				xStepper.setRate(Stepper::getRateForShorterAxle(stepsX, stepsY, yStepper.getCurrentRate()), true);
+				xStepper.setRate(Stepper::getRateForShorterAxle(stepsX, stepsY, LONG_AXLE_MIN_RATE), true);
 				yStepper.setAccelerationStepSize(LONG_AXLE_ACCELERATION_MILLISTEPS);
 				xStepper.setAccelerationStepSize(Stepper::getAccelerationForShorterAxle(stepsX, stepsY, LONG_AXLE_ACCELERATION_MILLISTEPS));
 
 				if(MIN_STEPS_FROM_MAX_TO_MIN_RATE*2 <= stepsY){
 					yStepper.setRate(MAX_RATE);
 					xStepper.setRate(Stepper::getRateForShorterAxle(stepsX, stepsY, MAX_RATE));
-					accy = true;
+					accelerate = true;
 				}
 			}
-			if(accy){
+
+
+			if(accelerate){
 				if(stepsX >= stepsY){
 					stepsX_start = stepsX-MIN_STEPS_FROM_MAX_TO_MIN_RATE;
 					stepsY_start = stepsY-((MIN_STEPS_FROM_MAX_TO_MIN_RATE*stepsY)/stepsX);
@@ -117,7 +118,6 @@ void Controller::_task(){
 					yStepper.runForSteps(stepsY_start);
 					xStepper.runForSteps(stepsX_start);
 				}
-				vTaskDelay(20*portTICK_PERIOD_MS); // Give some time for FreeRTOS
 				Stepper::waitForAllSteppers();
 				xStepper.setRate(0);
 				yStepper.setRate(0);
@@ -142,13 +142,13 @@ void Controller::_task(){
 		{
 			/*
 			 * cmd.x is angle from 0 to 180 */
-			uint16_t dutycycle = cmd.x/36 + 5;
+			double dutycycle = cmd.x/36 + 5;
 			pen.setDutycycleL(dutycycle); // Dutycycle 5 - 10%
 			sendOK();
 		}
 		break;
 		case CODES::M4:
-			//laser
+			laser.setDutycycleH(cmd.x/3.0); // Diving by 3 results in max 85% dutycycle
 			sendOK();
 			break;
 		case CODES::M10:

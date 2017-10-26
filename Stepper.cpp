@@ -37,12 +37,12 @@ Stepper::Stepper(uint8_t stepPort, uint8_t stepPin,
 {
 	direction = false;
 	stop = false;
-	currentSteps = 100000; // Something big to allow calibration to not underflow when reversing.
+	currentHalfSteps = 100000; // Something big to allow calibration to not underflow when reversing.
 	targetRate = 0;
 	currentRate = 0;
 	channel = MRT_channel;
 	stepperByChannel[MRT_channel] = this;
-	actionQueue = xQueueCreate(4, sizeof(action));
+	actionQueue = xQueueCreate(4, sizeof(Action));
 	_accelerationMilliStepSize = 8000;
 
 	_doneInternal = xSemaphoreCreateBinary();
@@ -87,7 +87,7 @@ void Stepper::MRT_callback(portBASE_TYPE* pxHigherPriorityWoken) {
 }
 
 void Stepper::calibrate() {
-	action a = {&Stepper::_calibrate, 0};
+	Action a = {&Stepper::_calibrate, 0};
 	xQueueSend(actionQueue, &a, portMAX_DELAY);
 }
 
@@ -116,12 +116,12 @@ void Stepper::setDirection(bool dir) {
 }
 
 uint32_t Stepper::getSteps() const {
-	return currentSteps;
+	return currentHalfSteps;
 }
 
 
 void Stepper::runForSteps(uint32_t steps){
-	action a = {&Stepper::_runForSteps, steps};
+	Action a = {&Stepper::_runForSteps, steps};
 	xQueueSend(actionQueue, &a, portMAX_DELAY);
 }
 
@@ -140,14 +140,14 @@ uint32_t Stepper::getRateAchievable(uint32_t steps, bool max) {
 }
 
 void Stepper::zeroSteps() {
-	currentSteps = 0;
+	currentHalfSteps = 0;
 }
 
 void Stepper::_task() {
 	while(true){
-		action a;
+		Action a;
 		xQueueReceive(actionQueue, &a, portMAX_DELAY);
-		(this->*(a.f))(a.param);
+		(this->*(a.function))(a.parameter);
 		xEventGroupSetBits(eventGroup, (1 << channel));
 	}
 }
@@ -189,37 +189,36 @@ void Stepper::StepControl::stop() {
 
 void Stepper::StepControl::setStepsToRun(uint32_t steps) {
 	if(steps > 0)
-		stepsToRun = (2*steps) - 1;
+		halfStepsToRun = (2*steps) - 1;
 	else
-		stepsToRun = 0;
+		halfStepsToRun = 0;
 }
 
 void Stepper::StepControl::MRT_callback(portBASE_TYPE* pxHigherPriorityWoken){
-	if(stepsToRun != 0){
-		bool maxed = !_stepper->direction ? _stepper->currentSteps == _stepper->maxSteps : _stepper->currentSteps == 0;
+	if(halfStepsToRun != 0){
+		bool maxed = !_stepper->direction ? _stepper->currentHalfSteps == _stepper->maxSteps : _stepper->currentHalfSteps == 0;
 
 		if(!(_stepper->stop || maxed))
 		{
 			pulse();
 			start(pxHigherPriorityWoken);
-			--stepsToRun;
+			--halfStepsToRun;
+			_stepper->currentHalfSteps = !_stepper->direction ? _stepper->currentHalfSteps+1 : _stepper->currentHalfSteps-1;
 		} else {
 			stop();
-			if(!maxed && _stepper->stop) // Just clip the picture, don't stop motor from moving to another direction;
-				_stepper->stop = true;
 			xSemaphoreGiveFromISR(_stepper->_doneInternal, pxHigherPriorityWoken);
 		}
 	} else {
 		stop();
 		xSemaphoreGiveFromISR(_stepper->_doneInternal, pxHigherPriorityWoken);
 	}
-	_stepper->currentSteps = !_stepper->direction ? _stepper->currentSteps+1 : _stepper->currentSteps-1;
 }
 
 extern "C" void MRT_IRQHandler(void) {
-	portBASE_TYPE pxHigherPriorityTaskWoken = pdFALSE;
 	uint32_t interruptPending = Chip_MRT_GetIntPending();
 	Chip_MRT_ClearIntPending(interruptPending);
+	portBASE_TYPE pxHigherPriorityTaskWoken = pdFALSE;
+
 	if(interruptPending & MRTn_INTFLAG(0)){
 		Stepper::StepControl* stepControl = Stepper::getStepperByChannel(0)->getStepControl();
 		stepControl->MRT_callback(&pxHigherPriorityTaskWoken);
@@ -244,17 +243,16 @@ extern "C" void MRT_IRQHandler(void) {
 
 void Stepper::goHome() {
 	setDirection(true);
-	runForSteps(currentSteps/2);
+	runForSteps(currentHalfSteps/2);
 }
 
 void Stepper::_runForSteps(uint32_t steps) {
 //	xEventGroupSync(eventGroup, (1 << channel+2), (1 << 2) | (1 << 3), portMAX_DELAY); // Sync the stepping between motors. Didn't help
 	if(steps > 0){
-		accelMRT_CH->INTVAL = Chip_Clock_GetSystemClockRate() / (1000/ACCELERATION_STEP_TIME_MS);
+		accelMRT_CH->INTVAL = (Chip_Clock_GetSystemClockRate()*1000) / ACCELERATION_STEP_TIME_MS;
 		accelMRT_CH->CTRL |= 1;
 		stepControl.setStepsToRun(steps);
 		stepControl.start(nullptr);
-		char dbg[2] = {channel + 'x', '\0'};
 		xSemaphoreTake(_doneInternal, portMAX_DELAY);
 	}
 }
@@ -297,8 +295,8 @@ void Stepper::_calibrate(uint32_t nothing) {
 
 	toggleDirection();
 	_runForSteps(150); // Back off from the limit switch
-	maxSteps = currentSteps;
+	maxSteps = currentHalfSteps;
 
-	_runForSteps(currentSteps/2);
+	_runForSteps(currentHalfSteps/2);
 	toggleDirection();
 }

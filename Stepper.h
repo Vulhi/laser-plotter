@@ -33,7 +33,7 @@ public:
 		Stepper* _stepper;
 		LPC_MRT_CH_T* stepCtrlMRT_CH;
 		uint32_t currentInterval;
-		uint32_t stepsToRun;
+		uint32_t halfStepsToRun;
 		DigitalIoPin pin;
 		bool _pulse;
 	};
@@ -61,16 +61,16 @@ public:
 	uint32_t getRateAchievable(uint32_t steps, bool max = true);
 	static uint32_t getRateForShorterAxle(uint32_t stepsShort, uint32_t stepsLong, uint32_t rateLong);
 	inline static uint32_t getAccelerationForShorterAxle(uint32_t stepsShort, uint32_t stepsLong, uint32_t accelLong) {
-		getRateForShorterAxle(stepsShort, stepsLong, accelLong);
+		return getRateForShorterAxle(stepsShort, stepsLong, accelLong);
 	}
 	void MRT_callback(portBASE_TYPE* pxHigherPriorityWoken);
 	static Stepper* getStepperByChannel(uint8_t channel);
 	static void waitForAllSteppers();
 private:
 	typedef void (Stepper::*actionFunc)(uint32_t);
-	struct action {
-		actionFunc f;
-		uint32_t param;
+	struct Action {
+		actionFunc function;
+		uint32_t parameter;
 	};
 	void _task() override;
 	static Stepper* stepperByChannel[2];
@@ -82,7 +82,7 @@ private:
 	uint32_t targetRate;
 	DigitalIoPin dirControl;
 	StepControl stepControl;
-	uint32_t currentSteps;
+	uint32_t currentHalfSteps;
 	uint32_t maxSteps;
 	uint8_t channel;
 	bool stop;
