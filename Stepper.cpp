@@ -30,7 +30,7 @@ Stepper* Stepper::stepperByChannel[2];
 Stepper::Stepper(uint8_t stepPort, uint8_t stepPin,
 		uint8_t dirPort, uint8_t dirPin,
 		uint8_t MRT_channel) :
-  Task("Stepper", configMINIMAL_STACK_SIZE*4, (tskIDLE_PRIORITY + 2UL)),
+  Task("Stepper", configMINIMAL_STACK_SIZE*4, (tskIDLE_PRIORITY + 3UL)),
   accelMRT_CH(LPC_MRT_CH(MRT_channel+2)),
   dirControl(dirPort, dirPin, DigitalIoPin::output, false),
   stepControl(stepPort, stepPin, MRT_channel, this)
@@ -65,8 +65,13 @@ void Stepper::setStop(bool stop){
 
 void Stepper::setRate(uint32_t rate, bool instant) {
 	targetRate = rate;
-	if(instant)
+	if(instant){
+		accelMRT_CH->INTVAL = 0 | (1 << 31);
+		accelMRT_CH->CTRL &= ~1;
 		currentRate = rate;
+		accelMRT_CH->INTVAL = (Chip_Clock_GetSystemClockRate()*1000) / ACCELERATION_STEP_TIME_MS;
+		accelMRT_CH->CTRL |= 1;
+	}
 }
 
 
@@ -98,10 +103,8 @@ void Stepper::waitForAllSteppers() {
 void Stepper::_accelerate(){
 	if(currentRate < targetRate){
 		currentRate += _accelerationMilliStepSize/1000;
-		ITM_write("Accel+\r\n");
 	} else if(targetRate < currentRate){
 		currentRate -= _accelerationMilliStepSize/1000;
-		ITM_write("Accel-\r\n");
 	} else {
 		accelMRT_CH->INTVAL = 0 | (1 << 31);
 		accelMRT_CH->CTRL &= ~1;
@@ -173,9 +176,8 @@ void Stepper::StepControl::setInterval(uint32_t rate){
 void Stepper::StepControl::start(portBASE_TYPE* pxHigherPriorityWoken){
 	stepCtrlMRT_CH->INTVAL = currentInterval;
 	if( currentInterval == 0 ){
-		if(pxHigherPriorityWoken != nullptr)
-			xSemaphoreGiveFromISR(_stepper->_doneInternal, pxHigherPriorityWoken);
-		else xSemaphoreGive(_stepper->_doneInternal);
+		ITM_write("odd things from ISR\r\n");
+		xSemaphoreGiveFromISR(_stepper->_doneInternal, pxHigherPriorityWoken);
 		stop();
 		return;
 	}
@@ -192,6 +194,17 @@ void Stepper::StepControl::setStepsToRun(uint32_t steps) {
 		halfStepsToRun = (2*steps) - 1;
 	else
 		halfStepsToRun = 0;
+}
+
+void Stepper::StepControl::start() {
+	stepCtrlMRT_CH->INTVAL = currentInterval;
+	if( currentInterval == 0 ){
+		ITM_write("odd things\r\n");
+		xSemaphoreGive(_stepper->_doneInternal);
+		stop();
+		return;
+	}
+	stepCtrlMRT_CH->CTRL |= 1; // Enable interrupt
 }
 
 void Stepper::StepControl::MRT_callback(portBASE_TYPE* pxHigherPriorityWoken){
@@ -251,8 +264,9 @@ void Stepper::_runForSteps(uint32_t steps) {
 	if(steps > 0){
 		accelMRT_CH->INTVAL = (Chip_Clock_GetSystemClockRate()*1000) / ACCELERATION_STEP_TIME_MS;
 		accelMRT_CH->CTRL |= 1;
+		vTaskDelay(2);
 		stepControl.setStepsToRun(steps);
-		stepControl.start(nullptr);
+		stepControl.start();
 		xSemaphoreTake(_doneInternal, portMAX_DELAY);
 	}
 }
@@ -296,7 +310,4 @@ void Stepper::_calibrate(uint32_t nothing) {
 	toggleDirection();
 	_runForSteps(150); // Back off from the limit switch
 	maxSteps = currentHalfSteps;
-
-	_runForSteps(currentHalfSteps/2);
-	toggleDirection();
 }

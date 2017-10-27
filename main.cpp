@@ -40,7 +40,7 @@ static void prvSetupHardware(void)
 	RunningTime::setup();
 
 	NVIC_EnableIRQ(MRT_IRQn);
-	NVIC_SetPriority(MRT_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY+1);
+	NVIC_SetPriority(MRT_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY+2);
 	ITM_init();
 }
 

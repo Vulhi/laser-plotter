@@ -25,6 +25,7 @@ public:
 		StepControl(uint8_t stepPort, uint8_t stepPin, uint8_t MRT_channel, Stepper* stepper);
 		void setInterval(uint32_t rate);
 		void start(portBASE_TYPE* pxHigherPriorityWoken);
+		void start();
 		void stop();
 		void pulse();
 		void setStepsToRun(uint32_t steps);
@@ -32,7 +33,7 @@ public:
 	private:
 		Stepper* _stepper;
 		LPC_MRT_CH_T* stepCtrlMRT_CH;
-		uint32_t currentInterval;
+		volatile uint32_t currentInterval;
 		uint32_t halfStepsToRun;
 		DigitalIoPin pin;
 		bool _pulse;

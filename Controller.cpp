@@ -7,11 +7,11 @@
 
 #include "Controller.h"
 
-#define JUST_TESTING
+//#define JUST_TESTING
 
 const uint32_t Controller::LONG_AXLE_MIN_RATE = 2000;
 const uint32_t Controller::MAX_RATE = 5000;
-const uint32_t Controller::LONG_AXLE_ACCELERATION_MILLISTEPS = 8000;
+const uint32_t Controller::LONG_AXLE_ACCELERATION_MILLISTEPS = 20000;
 
 const uint32_t Controller::MIN_STEPS_FROM_MAX_TO_MIN_RATE = Stepper::getStepsRequiredToAccelerate(
 		Controller::LONG_AXLE_ACCELERATION_MILLISTEPS,
@@ -106,28 +106,28 @@ void Controller::_task(){
 			}
 
 
-			if(accelerate){
-				if(stepsX >= stepsY){
-					stepsX_start = stepsX-MIN_STEPS_FROM_MAX_TO_MIN_RATE;
-					stepsY_start = stepsY-((MIN_STEPS_FROM_MAX_TO_MIN_RATE*stepsY)/stepsX);
-					xStepper.runForSteps(stepsX_start);
-					yStepper.runForSteps(stepsY_start);
-				} else {
-					stepsY_start = stepsY-MIN_STEPS_FROM_MAX_TO_MIN_RATE;
-					stepsX_start = stepsX-((MIN_STEPS_FROM_MAX_TO_MIN_RATE*stepsX)/stepsY);
-					yStepper.runForSteps(stepsY_start);
-					xStepper.runForSteps(stepsX_start);
-				}
-				Stepper::waitForAllSteppers();
-				xStepper.setRate(0);
-				yStepper.setRate(0);
-				xStepper.runForSteps(stepsX-stepsX_start);
-				yStepper.runForSteps(stepsY-stepsY_start);
-			}
-			else {
+//			if(accelerate){
+//				if(stepsX >= stepsY){
+//					stepsX_start = stepsX-MIN_STEPS_FROM_MAX_TO_MIN_RATE;
+//					stepsY_start = stepsY-((MIN_STEPS_FROM_MAX_TO_MIN_RATE*stepsY)/stepsX);
+//					xStepper.runForSteps(stepsX_start);
+//					yStepper.runForSteps(stepsY_start);
+//				} else {
+//					stepsY_start = stepsY-MIN_STEPS_FROM_MAX_TO_MIN_RATE;
+//					stepsX_start = stepsX-((MIN_STEPS_FROM_MAX_TO_MIN_RATE*stepsX)/stepsY);
+//					yStepper.runForSteps(stepsY_start);
+//					xStepper.runForSteps(stepsX_start);
+//				}
+//				Stepper::waitForAllSteppers();
+//				xStepper.setRate(0);
+//				yStepper.setRate(0);
+//				xStepper.runForSteps(stepsX-stepsX_start);
+//				yStepper.runForSteps(stepsY-stepsY_start);
+//			}
+//			else {
 				xStepper.runForSteps(stepsX);
 				yStepper.runForSteps(stepsY);
-			}
+//			}
 			Stepper::waitForAllSteppers();
 			sendOK();
 			break;
