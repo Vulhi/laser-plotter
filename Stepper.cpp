@@ -31,6 +31,7 @@ Stepper::Stepper(uint8_t stepPort, uint8_t stepPin,
 		uint8_t dirPort, uint8_t dirPin,
 		uint8_t MRT_channel) :
   Task("Stepper", configMINIMAL_STACK_SIZE*4, (tskIDLE_PRIORITY + 3UL)),
+  clockRate(Chip_Clock_GetSystemClockRate()),
   accelMRT_CH(LPC_MRT_CH(MRT_channel+2)),
   dirControl(dirPort, dirPin, DigitalIoPin::output, false),
   stepControl(stepPort, stepPin, MRT_channel, this)
@@ -69,7 +70,7 @@ void Stepper::setRate(uint32_t rate, bool instant) {
 		accelMRT_CH->INTVAL = 0 | (1 << 31);
 		accelMRT_CH->CTRL &= ~1;
 		currentRate = rate;
-		accelMRT_CH->INTVAL = (Chip_Clock_GetSystemClockRate()*1000) / ACCELERATION_STEP_TIME_MS;
+		accelMRT_CH->INTVAL = (clockRate*1000) / ACCELERATION_STEP_TIME_MS;
 		accelMRT_CH->CTRL |= 1;
 	}
 }
@@ -168,7 +169,7 @@ void Stepper::StepControl::pulse(){
 
 void Stepper::StepControl::setInterval(uint32_t rate){
 	if(rate > 0)
-		currentInterval = Chip_Clock_GetSystemClockRate() / (rate * 2); // Two interrupts = one step
+		currentInterval = _stepper->clockRate / (rate * 2); // Two interrupts = one step
 	else
 		currentInterval = 0;
 }
@@ -262,9 +263,9 @@ void Stepper::goHome() {
 void Stepper::_runForSteps(uint32_t steps) {
 //	xEventGroupSync(eventGroup, (1 << channel+2), (1 << 2) | (1 << 3), portMAX_DELAY); // Sync the stepping between motors. Didn't help
 	if(steps > 0){
-		accelMRT_CH->INTVAL = (Chip_Clock_GetSystemClockRate()*1000) / ACCELERATION_STEP_TIME_MS;
+		accelMRT_CH->INTVAL = (clockRate*1000) / ACCELERATION_STEP_TIME_MS;
 		accelMRT_CH->CTRL |= 1;
-		vTaskDelay(2);
+		stepControl.setInterval(currentRate);
 		stepControl.setStepsToRun(steps);
 		stepControl.start();
 		xSemaphoreTake(_doneInternal, portMAX_DELAY);

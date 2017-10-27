@@ -6,7 +6,7 @@
  */
 
 #include "Controller.h"
-
+#include "debugTools/itoa.h"
 //#define JUST_TESTING
 
 const uint32_t Controller::LONG_AXLE_MIN_RATE = 2000;
@@ -41,6 +41,7 @@ laser(LPC_SCT0)
 void Controller::_task(){
 	vTaskDelay(200);
 	while(true){
+		char dbg[32];
 		Command cmd = parser.getCommand();
 		switch(cmd.code){
 		case CODES::G1:{
@@ -82,10 +83,14 @@ void Controller::_task(){
 			if(stepsX >= stepsY){
 				// Calculate and set initial speed
 				xStepper.setRate(LONG_AXLE_MIN_RATE, true);
-				yStepper.setRate(Stepper::getRateForShorterAxle(stepsY, stepsX, LONG_AXLE_MIN_RATE), true);
+				uint32_t yRate = Stepper::getRateForShorterAxle(stepsY, stepsX, LONG_AXLE_MIN_RATE);
+				ITM_write(itoa(yRate, dbg, 10));
+				yStepper.setRate(yRate, true);
 				// Calculate and set acceleration
 				xStepper.setAccelerationStepSize(LONG_AXLE_ACCELERATION_MILLISTEPS);
-				yStepper.setAccelerationStepSize(Stepper::getAccelerationForShorterAxle(stepsY, stepsX, LONG_AXLE_ACCELERATION_MILLISTEPS));
+				uint32_t yAcc = Stepper::getAccelerationForShorterAxle(stepsY, stepsX, LONG_AXLE_ACCELERATION_MILLISTEPS);
+				ITM_write(itoa(yAcc, dbg, 10));
+				yStepper.setAccelerationStepSize(yAcc);
 				// Set target speed
 				if(MIN_STEPS_FROM_MAX_TO_MIN_RATE*2 <= stepsX){
 					xStepper.setRate(MAX_RATE);
@@ -94,9 +99,13 @@ void Controller::_task(){
 				}
 			} else {
 				yStepper.setRate(LONG_AXLE_MIN_RATE, true);
-				xStepper.setRate(Stepper::getRateForShorterAxle(stepsX, stepsY, LONG_AXLE_MIN_RATE), true);
+				uint32_t xRate = Stepper::getRateForShorterAxle(stepsX, stepsY, LONG_AXLE_MIN_RATE);
+				ITM_write(itoa(xRate, dbg, 10));
+				xStepper.setRate(xRate, true);
 				yStepper.setAccelerationStepSize(LONG_AXLE_ACCELERATION_MILLISTEPS);
-				xStepper.setAccelerationStepSize(Stepper::getAccelerationForShorterAxle(stepsX, stepsY, LONG_AXLE_ACCELERATION_MILLISTEPS));
+				uint32_t xAcc = Stepper::getAccelerationForShorterAxle(stepsX, stepsY, LONG_AXLE_ACCELERATION_MILLISTEPS);
+				ITM_write(itoa(xAcc, dbg, 10));
+				xStepper.setAccelerationStepSize(xAcc);
 
 				if(MIN_STEPS_FROM_MAX_TO_MIN_RATE*2 <= stepsY){
 					yStepper.setRate(MAX_RATE);

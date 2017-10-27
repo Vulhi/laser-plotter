@@ -38,6 +38,7 @@ public:
 		DigitalIoPin pin;
 		bool _pulse;
 	};
+	const uint32_t clockRate;
 	const static double ACCELERATION_STEP_TIME_MS;
 	uint32_t getAcceleration() const;
 	void setAccelerationStepSize(uint32_t milliSteps);
